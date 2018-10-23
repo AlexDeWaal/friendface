@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Entity;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -42,13 +44,35 @@ class UserProfile
     */
     private $password;
 
-    // getFriends
+    /**
+     * @ORM\ManyToMany(targetEntity="App\Entity\UserProfile", inversedBy="friendsReceived")
+     * @ORM\JoinTable(name="friendship",
+     *      joinColumns={
+     *          @ORM\JoinColumn(name="sender_id", referencedColumnName="id")
+     *      },
+     *      inverseJoinColumns={
+     *          @ORM\JoinColumn(name="received_id", referencedColumnName="id")
+     *      })
+     */
+    private $friendsRequested;
+
+    /**
+     * @ORM\ManyToMany(targetEntity="App\Entity\UserProfile", mappedBy="friendsRequested")
+     */
+    private $friendsReceived;
+
     public function getFriends() {
-        if ($this->friends == null) {
-        $this->friends = array();
-        }
-        return $this->friends;
+        return array_merge(
+            $this->getFriendsReceived()->toArray(),
+            $this->getFriendsRequested()->toArray()
+        );
     }
+
+    public function __construct()
+    {
+        $this->friendsReceived = new ArrayCollection();
+    }
+
 
     public function getId(): ?int
     {
@@ -85,6 +109,57 @@ class UserProfile
 
     public function setPassword(string $password): self {
         $this->password = $password;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|UserProfile[]
+     */
+    public function getFriendsReceived(): Collection
+    {
+        return $this->friendsReceived;
+    }
+
+    public function addFriendsReceived(UserProfile $friendsReceived): self
+    {
+        if (!$this->friendsReceived->contains($friendsReceived)) {
+            $this->friendsReceived[] = $friendsReceived;
+            $friendsReceived->addFriendsRequested($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFriendsReceived(UserProfile $friendsReceived): self
+    {
+        if ($this->friendsReceived->contains($friendsReceived)) {
+            $this->friendsReceived->removeElement($friendsReceived);
+            $friendsReceived->removeFriendsRequested($this);
+        }
+
+        return $this;
+    }
+
+    public function getFriendsRequested(): Collection
+    {
+        return $this->friendsRequested;
+    }
+
+    public function addFriendsRequested(UserProfile $friendsRequested): self
+    {
+        if (!$this->friendsRequested->contains($friendsRequested)) {
+            $this->friendsRequested[] = $friendsRequested;
+        }
+
+        return $this;
+    }
+
+    public function removeFriendsRequested(UserProfile $friendsRequested): self
+    {
+        if ($this->friendsRequested->contains($friendsRequested)) {
+            $this->friendsRequested->removeElement($friendsRequested);
+        }
 
         return $this;
     }
